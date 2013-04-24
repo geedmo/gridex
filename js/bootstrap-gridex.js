@@ -29,7 +29,8 @@
 	
   var pluginName = 'gridex',
   	  expandedClass = 'gd-expanded',
-  	  expanderClass = 'gd-expander';
+  	  expanderClass = 'gd-expander',
+  	  oldwidth = 0;
 
  /* PUBLIC CLASS DEFINITION
   * ============================== */
@@ -41,7 +42,7 @@
     this.$element = $(element);
     this.items 	  = this.$element.children(this.settings.children);
     this.sliding  = false;
-    
+    this.onresize = false;
 	this.init();
   }
 
@@ -49,17 +50,44 @@
 	var that = this;
 	
 	this.items.each(function(){
-		$(this).find('.'+expanderClass).height(0);
+		$(this).find('.'+expanderClass)
+			.height(0)
+			.on('click', function(e) { e.stopPropagation(); });
 	})
 	
 	// attacha event
 	this.items.on('click.gridex.data-api', function (e) {
 		e.preventDefault();
+		e.stopPropagation();
 		that.toggle(this);
+	})
+
+	// force to recalc height on screen resize
+	$(window).resize(function() {
+		
+		if($(this).width() == oldwidth) return;
+		oldwidth = $(this).width();
+
+		that.items.each(function(){
+			var $this = $(this);
+
+			//$this.data('gridexHeight', $this.height())
+
+			if($this.hasClass(expandedClass)) {
+				that.toggle(this, function() {
+					$this.data('gridexHeight', $this.siblings().eq(0).height())
+						 .css({ height: '' })
+				});
+			}
+			else
+				$this.data('gridexHeight', $this.height()).css({ height: '' })
+			
+		})
+		
 	})
   }
 
-  Gridex.prototype.toggle = function (item) {
+  Gridex.prototype.toggle = function (item, callback) {
 	  var that      = this,
 	  	  $item 	= $(item),
 	  	  $expander	= $item.find('.'+expanderClass),
@@ -98,6 +126,7 @@
 		  	complete: function() {
 		  		$item[isCollapsed ? 'addClass' : 'removeClass'](expandedClass);
 		  		that.sliding = false;
+		  		callback && callback()
 		  	}})
 		  
 		  $expander.animate({ height: (isCollapsed ? this.settings.height : 0)})
